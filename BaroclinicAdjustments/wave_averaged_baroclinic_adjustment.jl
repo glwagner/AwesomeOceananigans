@@ -3,20 +3,34 @@ using Oceananigans.Units
 using Printf
 
 arch = CPU()
+
+# Domain parameters
 Lx = 20kilometers # east-west extent [m]
 Ly = 20kilometers # north-south extent [m]
 Lz = 160           # depth [m]
-δx = 5kilometers   # Width of the bump in x
-δy = 20kilometers  # Width of the bump in y
+f₀ = 1e-4          # [s⁻¹] Coriolis parameter 
+
+# Front / initial condition parameters
 hᵢ = 50            # Initial mixed layer depth (m)
 N² = 1e-8          # [s⁻²] sub-mixed-layer buoyancy frequency / stratification
 M² = 2e-8          # [s⁻²] horizontal buoyancy gradient
-f₀ = 1e-4          # [s⁻¹] Coriolis parameter 
-u★ = 5e-3          # [m s⁻¹] ocean-side friction velocity
-Jᵇ = 1e-9          # [m² s⁻³] surface buoyancy flux 
-Δy = 10kilometers  # width of the region of the front
+Δy = 1kilometer    # [m] width of the region of the front
 Δb = Δy * M²       # buoyancy jump associated with the front
 ϵb = 1e-2 * Δb     # noise amplitude
+
+# Surface forcing parameters
+u★ = 5e-3          # [m s⁻¹] ocean-side friction velocity
+Jᵇ = 1e-9          # [m² s⁻³] surface buoyancy flux 
+
+# Gravity wave parameters
+g = 9.81
+a = 0.8                  # m
+λ = 60                   # m
+k = 2π / λ               # m⁻¹
+σ = sqrt(g * k) # s⁻¹
+Uˢ = a^2 * k * σ         # m s⁻¹
+
+# Output parameters
 save_fields_interval = 0.5day
 
 grid = RectilinearGrid(arch,
@@ -27,7 +41,10 @@ grid = RectilinearGrid(arch,
                        z = (-Lz, 0),
                        topology = (Periodic, Bounded, Bounded))
 
-@inline bump(x, y) = -Lz + h * exp(-x^2 / 2δx^2 - y^2 / 2δy^2)
+# Possibly add a bump...
+# δx = δy = 4kilometer
+# h = 50 # meters
+# @inline bump(x, y) = -Lz + h * exp(-x^2 / 2δx^2 - y^2 / 2δy^2)
 # grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bump))
 
 u_top_bc = FluxBoundaryCondition(-u★^2)
@@ -36,7 +53,19 @@ u_bcs = FieldBoundaryConditions(top=u_top_bc)
 b_top_bc = FluxBoundaryCondition(Jᵇ)
 b_bcs = FieldBoundaryConditions(top=b_top_bc)
 
-model = NonhydrostaticModel(; grid,
+uˢ(z) = Uˢ * exp(z / vertical_scale)
+
+# and its `z`-derivative is
+
+@inline function ∂z_uˢ(z, t, parameters)
+    k = parameters.k
+    Uˢ = parameters.Uˢ
+    return 2k * Uˢ * exp(2k * z)
+end
+
+stokes_drift = UniformStokesDrift(; ∂z_uˢ, parameters=(; k, Uˢ))
+
+model = NonhydrostaticModel(; grid, stokes_drift,
                             boundary_conditions = (; u=u_bcs, b=b_bcs),
                             timestepper = :RungeKutta3,
                             coriolis = FPlane(f=f₀),
