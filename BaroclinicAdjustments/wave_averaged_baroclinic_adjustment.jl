@@ -35,6 +35,7 @@ Uˢ = a^2 * k * σ         # m s⁻¹
 
 # Output parameters
 save_fields_interval = 0.5day
+output_directory = "nobackup/users/glwagner/awesome-oceananigans" #"."
 
 grid = RectilinearGrid(arch,
                        size = (Nx, Ny, Nz),
@@ -121,6 +122,7 @@ for side in keys(slicers)
 
     simulation.output_writers[side] = JLD2OutputWriter(model, (; b, ζ);
                                                        filename = filename * "_$(side)_slice",
+                                                       dir = output_directory,
                                                        schedule = TimeInterval(save_fields_interval),
                                                        overwrite_existing = true,
                                                        indices)
