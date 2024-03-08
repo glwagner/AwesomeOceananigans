@@ -5,10 +5,13 @@ using Printf
 arch = CPU()
 
 # Domain parameters
-Lx = 20kilometers # east-west extent [m]
-Ly = 20kilometers # north-south extent [m]
+Lx = 10kilometers # east-west extent [m]
+Ly = 10kilometers # north-south extent [m]
 Lz = 160           # depth [m]
 f₀ = 1e-4          # [s⁻¹] Coriolis parameter 
+Nx = 48
+Ny = 48
+Nz = 24
 
 # Front / initial condition parameters
 hᵢ = 50            # Initial mixed layer depth (m)
@@ -34,14 +37,14 @@ Uˢ = a^2 * k * σ         # m s⁻¹
 save_fields_interval = 0.5day
 
 grid = RectilinearGrid(arch,
-                       size = (48, 48, 24),
+                       size = (Nx, Ny, Nz),
                        halo = (4, 4, 4),
                        x = (-Lx/2, Lx/2),
                        y = (-Ly/2, Ly/2),
                        z = (-Lz, 0),
                        topology = (Periodic, Bounded, Bounded))
 
-# Possibly add a bump...
+# Possibly add bathymetry
 # δx = δy = 4kilometer
 # h = 50 # meters
 # @inline bump(x, y) = -Lz + h * exp(-x^2 / 2δx^2 - y^2 / 2δy^2)
