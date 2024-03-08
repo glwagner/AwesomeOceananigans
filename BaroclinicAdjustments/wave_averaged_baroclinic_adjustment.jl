@@ -2,16 +2,16 @@ using Oceananigans
 using Oceananigans.Units
 using Printf
 
-arch = CPU()
+arch = GPU()
 
 # Domain parameters
 Lx = 10kilometers # east-west extent [m]
 Ly = 10kilometers # north-south extent [m]
 Lz = 160           # depth [m]
 f₀ = 1e-4          # [s⁻¹] Coriolis parameter 
-Nx = 48
-Ny = 48
-Nz = 24
+Nx = 512
+Ny = 512
+Nz = 128
 
 # Front / initial condition parameters
 hᵢ = 50            # Initial mixed layer depth (m)
@@ -110,7 +110,10 @@ function print_progress(sim)
 
     @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
             progress, iteration(sim), prettytime(sim), prettytime(elapsed),
-            maximum(abs, u), maximum(abs, v), maximum(abs, w), prettytime(sim.Δt))
+            maximum(abs, interior(u)),
+            maximum(abs, interior(v)),
+            maximum(abs, interior(w)),
+            prettytime(sim.Δt))
 
     wall_clock[] = time_ns()
     
