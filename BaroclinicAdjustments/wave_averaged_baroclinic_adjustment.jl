@@ -22,16 +22,18 @@ M² = 2e-8          # [s⁻²] horizontal buoyancy gradient
 ϵb = 1e-2 * Δb     # noise amplitude
 
 # Surface forcing parameters
-u★ = 5e-3          # [m s⁻¹] ocean-side friction velocity
-Jᵇ = 1e-9          # [m² s⁻³] surface buoyancy flux 
+u★ = 5e-3  # [m s⁻¹] ocean-side friction velocity
+θ★ = 30    # [ᵒ] wind direction (relative to along-front direction)
+Jᵇ = 1e-9  # [m² s⁻³] surface buoyancy flux 
 
 # Gravity wave parameters
-g = 9.81
-a = 0.8                  # m
-λ = 60                   # m
-k = 2π / λ               # m⁻¹
-σ = sqrt(g * k) # s⁻¹
-Uˢ = a^2 * k * σ         # m s⁻¹
+a = 0.8          # [m] wave amplitude
+λ = 60           # [m] wavelength
+g = 9.81         # [m s⁻²] gravitational acceleration
+k = 2π / λ       # [m⁻¹] wavenumber
+σ = sqrt(g * k)  # [s⁻¹] wave frequency
+Uˢ = a^2 * k * σ # [m s⁻¹] surface Stokes drift
+θˢ = 30          # [ᵒ] Stokes drift direction (relative to along-front direction)
 
 # Output parameters
 save_fields_interval = 0.5day
@@ -51,23 +53,30 @@ grid = RectilinearGrid(arch,
 # @inline bump(x, y) = -Lz + h * exp(-x^2 / 2δx^2 - y^2 / 2δy^2)
 # grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bump))
 
-u_top_bc = FluxBoundaryCondition(-u★^2)
+τˣ = -u★^2 * cosd(θ★)
+τʸ = -u★^2 * sind(θ★)
+
+u_top_bc = FluxBoundaryCondition(τˣ)
+v_top_bc = FluxBoundaryCondition(τʸ)
 u_bcs = FieldBoundaryConditions(top=u_top_bc)
+v_bcs = FieldBoundaryConditions(top=v_top_bc)
 
 b_top_bc = FluxBoundaryCondition(Jᵇ)
 b_bcs = FieldBoundaryConditions(top=b_top_bc)
 
-uˢ(z) = Uˢ * exp(z / vertical_scale)
+return 2k * Uˢ * exp(2k * z) * cos_θˢ
 
-# and its `z`-derivative is
-
-@inline function ∂z_uˢ(z, t, parameters)
+@inline function ∂z_Uˢ(z, t, parameters)
     k = parameters.k
     Uˢ = parameters.Uˢ
     return 2k * Uˢ * exp(2k * z)
 end
 
-stokes_drift = UniformStokesDrift(; ∂z_uˢ, parameters=(; k, Uˢ))
+@inline ∂z_uˢ(z, t, p) = p.cos_θˢ * ∂z_Uˢ(z, t, p)
+@inline ∂z_vˢ(z, t, p) = p.sin_θˢ * ∂z_Uˢ(z, t, p)
+
+stokes_drift_parameters = (; k, Uˢ, cos_θˢ = cosd(θˢ), sin_θˢ = sind(θˢ))
+stokes_drift = UniformStokesDrift(; ∂z_uˢ, ∂z_vˢ, parameters=stokes_drift_parameters)
 
 model = NonhydrostaticModel(; grid, stokes_drift,
                             boundary_conditions = (; u=u_bcs, b=b_bcs),
