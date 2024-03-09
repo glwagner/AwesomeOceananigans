@@ -9,9 +9,9 @@ Lx = 10kilometers # east-west extent [m]
 Ly = 10kilometers # north-south extent [m]
 Lz = 160           # depth [m]
 f₀ = 1e-4          # [s⁻¹] Coriolis parameter 
-Nx = 512
-Ny = 512
-Nz = 128
+Nx = 2048
+Ny = 2048
+Nz = 96
 
 # Front / initial condition parameters
 hᵢ = 50            # Initial mixed layer depth (m)
@@ -36,8 +36,9 @@ Uˢ = a^2 * k * σ # [m s⁻¹] surface Stokes drift
 θˢ = 30          # [ᵒ] Stokes drift direction (relative to along-front direction)
 
 # Output parameters
-save_fields_interval = 0.5day
-output_directory = "nobackup/users/glwagner/awesome-oceananigans" #"."
+save_fields_interval = 1hour
+output_directory = "." #"nobackup/users/glwagner/awesome-oceananigans" #"."
+filename = "wave_averaged_baroclinic_adjustment"
 
 grid = RectilinearGrid(arch,
                        size = (Nx, Ny, Nz),
@@ -84,7 +85,7 @@ model = NonhydrostaticModel(; grid, stokes_drift,
                             coriolis = FPlane(f=f₀),
                             buoyancy = BuoyancyTracer(),
                             tracers = :b,
-                            advection = WENO())
+                            advection = WENO(order=9))
 
 ramp(y, Δy) = min(max(0, y/Δy + 1/2), 1)
 
@@ -122,11 +123,8 @@ end
 
 add_callback!(simulation, print_progress, IterationInterval(100))
 
-filename = "wave_averaged_baroclinic_adjustment"
-
 slicers = (east = (grid.Nx, :, :),
            north = (:, grid.Ny, :),
-           bottom = (:, :, 1),
            top = (:, :, grid.Nz))
 
 for side in keys(slicers)
