@@ -2,12 +2,11 @@ using Oceananigans
 using GLMakie
 
 prefix = "wave_averaged_baroclinic_adjustment"
-sides = (:east, :north, :bottom, :top)
+sides = (:east, :north, :top)
 slice_filenames = NamedTuple(side => prefix * "_$(side)_slice.jld2" for side in sides)
 
 bts = (east   = FieldTimeSeries(slice_filenames.east, "b"),
        north  = FieldTimeSeries(slice_filenames.north, "b"),
-       bottom = FieldTimeSeries(slice_filenames.bottom, "b"),
        top    = FieldTimeSeries(slice_filenames.top, "b"))
 
 grid = bts.east.grid
@@ -53,7 +52,6 @@ n = Nt
 
 b_slices = (east   = interior(bts.east[n],   1, :, :),
             north  = interior(bts.north[n],  :, 1, :),
-            bottom = interior(bts.bottom[n], :, :, 1),
             top    = interior(bts.top[n],    :, :, 1))
 
 clims = 0.9 .* extrema(bts.top[1][:])
@@ -61,7 +59,6 @@ clims = 0.9 .* extrema(bts.top[1][:])
 kwargs = (colorrange=clims, colormap=:deep)
 surface!(ax, x_yz_east, y_yz, z_yz;    color = b_slices.east, kwargs...)
 surface!(ax, x_xz, y_xz_north, z_xz;   color = b_slices.north, kwargs...)
-surface!(ax, x_xy, y_xy, z_xy_bottom ; color = b_slices.bottom, kwargs...)
 surface!(ax, x_xy, y_xy, z_xy_top;     color = b_slices.top, kwargs...)
 
 display(fig)
