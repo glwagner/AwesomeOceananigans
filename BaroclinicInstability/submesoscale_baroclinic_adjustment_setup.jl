@@ -27,15 +27,15 @@ function langmuir_density_front_setup(;
 
     # Front / initial condition parameters
      f = 1e-4,          # [s⁻¹] Coriolis parameter 
-    hᵢ = 50,            # Initial mixed layer depth (m)
-    N² = 1e-8,          # [s⁻²] sub-mixed-layer buoyancy frequency / stratification
-    M² = 2e-8,          # [s⁻²] horizontal buoyancy gradient
+    hᵢ = 10,            # Initial mixed layer depth (m)
+    N² = 1e-6,          # [s⁻²] sub-mixed-layer buoyancy frequency / stratification
+    M² = 1e-7,          # [s⁻²] horizontal buoyancy gradient
     Δy = 500,           # [m] width of the region of the front
     Δb = Δy * M²,       # buoyancy jump associated with the front
-    ϵb = 1e-2 * Δb,     # noise amplitude
+    ϵb = 1e-6 * Δb,     # noise amplitude
 
     # Surface forcing parameters
-    u★ = 5e-3,  # [m s⁻¹] ocean-side friction velocity
+    u★ = 1e-4,  # [m s⁻¹] ocean-side friction velocity
     θ★ = 30,    # [ᵒ] wind direction (relative to along-front direction)
     Jᵇ = 1e-9,  # [m² s⁻³] surface buoyancy flux 
     
@@ -43,29 +43,29 @@ function langmuir_density_front_setup(;
     a = 0.8,          # [m] wave amplitude
     λ = 60,           # [m] wavelength
     g = 9.81,         # [m s⁻²] gravitational acceleration
-    θˢ = 30,          # [ᵒ] Stokes drift direction (relative to along-front direction)
-
-)
+    θˢ = 30)          # [ᵒ] Stokes drift direction (relative to along-front direction)
 
     # Note that via thermal wind, f ∂z u ~ ∇ₕ b ~ M².
+    #
     # Therefore the Richardson number,
     #
     # Ri ≡ N² / | ∂z u |²
     #
     # can be written
 
-    Ri = N² * f₀^2 / M²^2
+    Ri = N² * f^2 / M²^2
 
-    # Eddy length scales and growth rates:
+    # Eddy length scales and growth rates according to Hamlington et al., 2014:
 
-    L = 2π * M² * hᵢ / f₀^2 * sqrt(2/5) * sqrt(1 + Ri)
-    τ = sqrt(54/5) * sqrt(1 + Ri) / f₀
+    L = 2π * sqrt(2/5) * M² * hᵢ * sqrt(1 + Ri) / f^2
+    τ = sqrt(54/5) * sqrt(1 + Ri) / f
 
     @info """ Some simulation parameters:
 
              Richardson number: $Ri
              Eddy length scale: $L
         Eddy growth time-scale: $(prettytime(τ))
+
     """
     k = 2π / λ       # [m⁻¹] wavenumber
     σ = sqrt(g * k)  # [s⁻¹] wave frequency
@@ -92,7 +92,8 @@ function langmuir_density_front_setup(;
         return N² * z̃ + Δb * ramp(y, Δy) + ϵb * randn()
     end
 
-    return (boundary_conditions = (; u=u_bcs, b=b_bcs),
+    return (domain = (; Lx, Ly, Lz),
+            boundary_conditions = (; u=u_bcs, b=b_bcs),
             coriolis = FPlane(; f),
             stokes_drift = stokes_drift,
             buoyancy = BuoyancyTracer(),
